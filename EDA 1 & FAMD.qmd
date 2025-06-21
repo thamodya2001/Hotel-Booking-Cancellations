@@ -1,0 +1,258 @@
+---
+title: "booking cancellation"
+format: docx
+editor: visual
+---
+
+## Quarto
+
+```{r}
+setwd("C:\\Users\\Lakmini\\Desktop\\ML product\\booking cancellation")
+library(readxl)
+X_train=read_xlsx("X_train.xlsx")
+y_train=read_xlsx("y_train.xlsx")
+X_test=read_xlsx("X_test.xlsx")
+y_test=read_xlsx("y_train.xlsx")
+```
+
+```{r}
+library(ggplot2)
+library(scales) # For percentage formatting
+
+# Get the name of your single column
+col_name <- names(y_train)[1]
+
+# Create the percentage bar plot
+ggplot(y_train, aes(x = "", fill = factor(get(col_name), levels = c(0, 1), labels = c("No", "Yes")))) +
+  geom_bar(position = "fill", width = 0.5, alpha = 0.8) +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c("No" = "#F8766D", "Yes" = "#00BFC4")) +
+  labs(
+    x = NULL, 
+    y = "Percentage", 
+    fill = "Response",
+    title = "Distribution of Binary Response"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 12),
+    legend.position = "bottom"
+  )
+```
+
+Presentage distribution of response variable
+
+```{r}
+library(ggplot2)
+library(scales)
+library(dplyr)  # This provides the %>% operator
+
+# Get the name of your binary column
+binary_col <- names(y_train)[1]
+
+# Calculate percentages (now with explicit package reference)
+percent_data <- y_train %>% 
+  dplyr::group_by(!!sym(binary_col)) %>% 
+  dplyr::summarise(count = n()) %>% 
+  dplyr::mutate(percentage = count/sum(count))
+
+# Create two-bar percentage plot
+ggplot(percent_data, 
+       aes(x = factor(!!sym(binary_col)), 
+           y = percentage, 
+           fill = factor(!!sym(binary_col)), 
+           label = scales::percent(percentage))) +
+  geom_col(width = 0.6) +
+  geom_text(vjust = -0.5, size = 5) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  scale_fill_manual(values = c("0" = "#F8766D", "1" = "#00BFC4"),
+                    labels = c("0" = "No", "1" = "Yes")) +
+  labs(x = "is_cancelled",
+       y = "Percentage",
+       title = "Percentage Distribution of Booking Cancellations") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+```
+
+## Cancellation By Country
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)  # for percent_format
+
+# Compute cancellation rate per country
+prop_cancel <- X_train %>%
+  group_by(country) %>%
+  summarise(cancel_rate = mean(Cancelled), .groups = "drop")
+
+# Lollipop chart with percent labels
+ggplot(prop_cancel, aes(x = reorder(country, cancel_rate), y = cancel_rate)) +
+  geom_segment(aes(xend = country, y = 0, yend = cancel_rate), color = "grey") +
+  geom_point(color = "tomato", size = 4) +
+  geom_text(aes(label = scales::percent(cancel_rate, accuracy = 0.1)), 
+            hjust = -0.2, size = 3.5) +
+  labs(title = "Cancellation Rate per Country",
+       x = "Country", y = "Cancellation Rate") +
+  theme_minimal() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1.1))
+
+```
+
+## Not Cancellations BY country
+
+```{r}
+ prop_cancel <- X_train %>%
+  group_by(country) %>%
+  summarise(non_cancel_rate = 1 - mean(Cancelled), .groups = "drop")
+ggplot(prop_cancel, aes(x = reorder(country, non_cancel_rate), y = non_cancel_rate)) +
+  geom_segment(aes(xend = country, y = 0, yend = non_cancel_rate), color = "grey") +
+  geom_point(color = "steelblue", size = 4) +
+  geom_text(aes(label = scales::percent(non_cancel_rate, accuracy = 0.1)), 
+            hjust = -0.2, size = 3.5) +
+  labs(title = "Non-Cancellation Rate per Country",
+       x = "Country", y = "Non-Cancellation Rate") +
+  theme_minimal() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1.1))
+
+```
+
+## Pie chart of country variable
+
+```{r}
+# Sample categorical variable
+table_data <- table(X_train$country)
+
+# Calculate percentages
+pct <- round(table_data / sum(table_data) * 100)
+
+# Create labels with category names + percentages
+lbls <- paste(names(table_data), pct, "%")
+
+# Pie chart with labels
+pie(table_data, labels = lbls, 
+    main = "Pie Chart with Percentages",
+    col = rainbow(length(table_data)))
+
+
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Prepare data with percentages
+X_train %>%
+  count(country) %>%
+  mutate(percentage = n / sum(n) * 100) %>%
+  ggplot(aes(x = country, y = percentage)) +
+  geom_bar(stat = "identity", fill = "lightblue") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5) +
+  labs(title = "Bar Chart of Category with Percentages",
+       x = "Category",
+       y = "Percentage") +
+  theme_minimal()
+
+```
+
+## FAMD Results
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(ggplot2)
+
+
+# 2. Run FAMD analysis
+famd_result <- FAMD(X_train, 
+                   ncp = 5,    # Number of dimensions to keep
+                   graph = FALSE)
+
+
+# A. Scree plot (variance explained)
+scree_plot <- fviz_screeplot(famd_result, 
+                            addlabels = TRUE,
+                            barfill = "#4E79A7",
+                            barcolor = "#4E79A7") +
+  labs(title = "Variance Explained by Each Dimension",
+       x = "Dimensions",
+       y = "Percentage of Variance") +
+  theme_minimal()
+
+# B. Variable correlation plot
+var_plot <- fviz_famd_var(famd_result, 
+                         repel = TRUE,
+                         col.var = "contrib",
+                         gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                         labelsize = 4) +
+  labs(title = "Variable Contributions to Dimensions",
+       caption = "Size and color represent contribution strength") +
+  theme_minimal(base_size = 12)
+
+
+
+ 
+```
+
+## Cramer'V association Matrix
+
+```{r}
+library(readxl)
+library(rcompanion)
+library(ggcorrplot)
+
+setwd("C:\\Users\\Lakmini\\Desktop\\ML product\\booking cancellation")
+# Load data
+X_train <- read_excel("X_train.xlsx")
+
+# Select only categorical columns (factors/characters)
+cat_vars <- X_train[, sapply(X_train, function(x) is.factor(x) | is.character(x))]
+
+# Convert all to factors to handle character columns
+cat_vars <- data.frame(lapply(cat_vars, as.factor))
+
+# Initialize matrix
+n <- ncol(cat_vars)
+cramer_matrix <- matrix(NA, n, n)
+colnames(cramer_matrix) <- rownames(cramer_matrix) <- names(cat_vars)
+
+# Efficient pairwise calculation (with progress bar)
+pb <- txtProgressBar(min = 0, max = n*n, style = 3)
+for (i in 1:n) {
+  for (j in 1:n) {
+    # Skip diagonal (self-correlation)
+    if (i == j) {
+      cramer_matrix[i,j] <- 1
+      next
+    }
+    
+    # Remove NAs pairwise
+    complete_cases <- complete.cases(cat_vars[,c(i,j)])
+    tab <- table(cat_vars[complete_cases, i], cat_vars[complete_cases, j])
+    
+    # Safe calculation for zero-variance cases
+    if (nrow(tab) > 1 && ncol(tab) > 1) {
+      cramer_matrix[i,j] <- cramerV(tab)
+    } else {
+      cramer_matrix[i,j] <- NA  # Insufficient variation
+    }
+    setTxtProgressBar(pb, (i-1)*n + j)
+  }
+}
+close(pb)
+
+# Visualize
+ggcorrplot(cramer_matrix,
+           hc.order = TRUE,
+           type = "lower",
+           lab = TRUE,
+           colors = c("#6D9EC1", "white", "#E46726"),
+           title = "Cramer's V Association Matrix") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```

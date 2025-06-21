@@ -1,0 +1,287 @@
+---
+title: "Untitled"
+format: docx
+editor: visual
+---
+
+## Fitting Logistic regression
+
+```{r}
+library(readxl)
+library(caret)
+library(dplyr)
+
+setwd("C:\\Users\\Lakmini\\Desktop\\ML product\\booking cancellation")
+
+# Load the data
+X_train <- read_excel("X_train.xlsx")
+X_test  <- read_excel("X_test.xlsx")
+y_train <- read_excel("y_train.xlsx")
+y_test  <- read_excel("y_test.xlsx")
+
+# Set target variables
+y_train <- as.factor(y_train[[1]])
+y_test <- as.factor(y_test[[1]])
+
+# Identify numeric and categorical columns
+numeric_cols <- sapply(X_train, is.numeric)
+categorical_cols <- setdiff(colnames(X_train), colnames(X_train)[numeric_cols])
+
+# Normalize numeric data
+preproc <- preProcess(X_train[, numeric_cols], method = c("center", "scale"))
+train_num <- predict(preproc, X_train[, numeric_cols])
+test_num <- predict(preproc, X_test[, numeric_cols])
+
+# Encode categorical 
+dummies <- dummyVars("~ .", data = X_train[, categorical_cols], fullRank = TRUE)
+train_cat <- as.data.frame(predict(dummies, newdata = X_train[, categorical_cols]))
+test_cat  <- as.data.frame(predict(dummies, newdata = X_test[, categorical_cols]))
+
+# Align columns
+missing_cols <- setdiff(names(train_cat), names(test_cat))
+for (col in missing_cols) {
+  test_cat[[col]] <- 0
+}
+# Also reorder test_cat columns to match training
+test_cat <- test_cat[, names(train_cat)]
+
+
+train_final <- cbind(train_num, train_cat)
+test_final  <- cbind(test_num, test_cat)
+
+
+```
+
+### Fitting the full model ( considering both market_segment and distribution_channel)
+
+```{r}
+# Fit logistic regression
+model <- glm(y_train ~ ., data = train_final, family = "binomial")
+
+# Predict on training set (for training accuracy)
+train_pred_probs <- predict(model, newdata = train_final, type = "response")
+train_pred_class <- ifelse(train_pred_probs > 0.5, 1, 0)
+train_accuracy <- mean(train_pred_class == as.numeric(as.character(y_train)))
+
+# Predict on test set
+test_pred_probs <- predict(model, newdata = test_final, type = "response")
+test_pred_class <- ifelse(test_pred_probs > 0.5, 1, 0)
+test_accuracy <- mean(test_pred_class == as.numeric(as.character(y_test)))
+
+# Print results
+print(paste("Training Accuracy:", round(train_accuracy * 100, 2), "%"))
+print(paste("Test Accuracy:", round(test_accuracy * 100, 2), "%"))
+
+# Confusion matrix for test set
+print("Test Set Confusion Matrix:")
+print(confusionMatrix(factor(test_pred_class, levels = levels(y_test)), y_test))
+ 
+```
+
+```{r}
+library(car)
+?vif
+vif(model)
+```
+
+### Fitting reduced models (- market_segment)
+
+```{r}
+library(readxl)
+library(caret)
+library(dplyr)
+
+setwd("C:\\Users\\Lakmini\\Desktop\\ML product\\booking cancellation")
+
+# Load the data
+X_train <- read_excel("X_train.xlsx")
+X_test  <- read_excel("X_test.xlsx")
+y_train <- read_excel("y_train.xlsx")
+y_test  <- read_excel("y_test.xlsx")
+
+# Set target variables
+y_train <- as.factor(y_train[[1]])
+y_test <- as.factor(y_test[[1]])
+
+X_train=X_train[-13]
+X_test=X_test[-13]
+
+# Identify numeric and categorical columns
+numeric_cols <- sapply(X_train, is.numeric)
+categorical_cols <- setdiff(colnames(X_train), colnames(X_train)[numeric_cols])
+
+# Normalize numeric data
+preproc <- preProcess(X_train[, numeric_cols], method = c("center", "scale"))
+train_num <- predict(preproc, X_train[, numeric_cols])
+test_num <- predict(preproc, X_test[, numeric_cols])
+
+# Encode categorical 
+dummies <- dummyVars("~ .", data = X_train[, categorical_cols], fullRank = TRUE)
+train_cat <- as.data.frame(predict(dummies, newdata = X_train[, categorical_cols]))
+test_cat  <- as.data.frame(predict(dummies, newdata = X_test[, categorical_cols]))
+
+# Align columns
+missing_cols <- setdiff(names(train_cat), names(test_cat))
+for (col in missing_cols) {
+  test_cat[[col]] <- 0
+}
+# Also reorder test_cat columns to match training
+test_cat <- test_cat[, names(train_cat)]
+
+
+train_final <- cbind(train_num, train_cat)
+test_final  <- cbind(test_num, test_cat)
+
+# Fit logistic regression
+model <- glm(y_train ~ ., data = train_final, family = "binomial")
+
+# Predict on training set (for training accuracy)
+train_pred_probs <- predict(model, newdata = train_final, type = "response")
+train_pred_class <- ifelse(train_pred_probs > 0.5, 1, 0)
+train_accuracy <- mean(train_pred_class == as.numeric(as.character(y_train)))
+
+# Predict on test set
+test_pred_probs <- predict(model, newdata = test_final, type = "response")
+test_pred_class <- ifelse(test_pred_probs > 0.5, 1, 0)
+test_accuracy <- mean(test_pred_class == as.numeric(as.character(y_test)))
+
+# Print results
+print(paste("Training Accuracy:", round(train_accuracy * 100, 2), "%"))
+print(paste("Test Accuracy:", round(test_accuracy * 100, 2), "%"))
+
+# Confusion matrix for test set
+print("Test Set Confusion Matrix:")
+print(confusionMatrix(factor(test_pred_class, levels = levels(y_test)), y_test))
+
+```
+
+### Reduced model ( -distribution channel )
+
+```{r}
+
+library(caret)
+library(dplyr)
+
+setwd("C:\\Users\\Lakmini\\Desktop\\ML product\\booking cancellation")
+
+# Load the data
+X_train <- read_excel("X_train.xlsx")
+X_test  <- read_excel("X_test.xlsx")
+y_train <- read_excel("y_train.xlsx")
+y_test  <- read_excel("y_test.xlsx")
+
+# Set target variables
+y_train <- as.factor(y_train[[1]])
+y_test <- as.factor(y_test[[1]])
+
+X_train=X_train[-14]
+X_test=X_test[-14]
+
+# Identify numeric and categorical columns
+numeric_cols <- sapply(X_train, is.numeric)
+categorical_cols <- setdiff(colnames(X_train), colnames(X_train)[numeric_cols])
+
+# Normalize numeric data
+preproc <- preProcess(X_train[, numeric_cols], method = c("center", "scale"))
+train_num <- predict(preproc, X_train[, numeric_cols])
+test_num <- predict(preproc, X_test[, numeric_cols])
+
+# Encode categorical 
+dummies <- dummyVars("~ .", data = X_train[, categorical_cols], fullRank = TRUE)
+train_cat <- as.data.frame(predict(dummies, newdata = X_train[, categorical_cols]))
+test_cat  <- as.data.frame(predict(dummies, newdata = X_test[, categorical_cols]))
+
+# Align columns
+missing_cols <- setdiff(names(train_cat), names(test_cat))
+for (col in missing_cols) {
+  test_cat[[col]] <- 0
+}
+# Also reorder test_cat columns to match training
+test_cat <- test_cat[, names(train_cat)]
+
+
+train_final <- cbind(train_num, train_cat)
+test_final  <- cbind(test_num, test_cat)
+
+# Fit logistic regression
+model <- glm(y_train ~ ., data = train_final, family = "binomial")
+
+# Predict on training set (for training accuracy)
+train_pred_probs <- predict(model, newdata = train_final, type = "response")
+train_pred_class <- ifelse(train_pred_probs > 0.5, 1, 0)
+train_accuracy <- mean(train_pred_class == as.numeric(as.character(y_train)))
+
+# Predict on test set
+test_pred_probs <- predict(model, newdata = test_final, type = "response")
+test_pred_class <- ifelse(test_pred_probs > 0.5, 1, 0)
+test_accuracy <- mean(test_pred_class == as.numeric(as.character(y_test)))
+
+# Print results
+print(paste("Training Accuracy:", round(train_accuracy * 100, 2), "%"))
+print(paste("Test Accuracy:", round(test_accuracy * 100, 2), "%"))
+
+# Confusion matrix for test set
+print("Test Set Confusion Matrix:")
+print(confusionMatrix(factor(test_pred_class, levels = levels(y_test)), y_test))
+
+```
+
+```         
+```
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(ggplot2)
+
+setwd("C:\\Users\\Lakmini\\Desktop\\ML product\\booking cancellation")
+
+# 1.Load the data
+X_train <- read_excel("X_train.xlsx")
+# 2. Run FAMD analysis
+famd_result <- FAMD(X_train, 
+                   ncp = 5,    # Number of dimensions to keep
+                   graph = FALSE)
+
+
+# A. Scree plot (variance explained)
+scree_plot <- fviz_screeplot(famd_result, 
+                            addlabels = TRUE,
+                            barfill = "#4E79A7",
+                            barcolor = "#4E79A7") +
+  labs(title = "Variance Explained by Each Dimension",
+       x = "Dimensions",
+       y = "Percentage of Variance") +
+  theme_minimal()
+
+# B. Variable correlation plot
+var_plot <- fviz_famd_var(famd_result, 
+                         repel = TRUE,
+                         col.var = "contrib",
+                         gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                         labelsize = 4) +
+  labs(title = "Variable Contributions to Dimensions",
+       caption = "Size and color represent contribution strength") +
+  theme_minimal(base_size = 12)
+
+
+
+
+```
+
+## Calculating total variability importance considering full model
+
+```{r}
+# Extract coefficients for these variables
+coef_table <- summary(model)$coefficients
+ms_coefs <- coef_table[grep("market_segment", rownames(coef_table)), ]
+dc_coefs <- coef_table[grep("distribution_channel", rownames(coef_table)), ]
+
+# Calculate total variable importance (sum of absolute coefficients)
+ms_importance <- sum(abs(ms_coefs[, "Estimate"]))
+dc_importance <- sum(abs(dc_coefs[, "Estimate"]))
+
+cat(sprintf("Market Segment Importance: %.2f\nDistribution Channel Importance: %.2f",
+            ms_importance, dc_importance))
+
+```
